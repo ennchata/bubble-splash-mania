@@ -6,6 +6,7 @@ using UnityEngine;
 public class Orb : MonoBehaviour {
     public OrbManager Manager;
     public Orb Top, Bottom, Left, Right = null;
+    public ParticleSystem Particle;
     public string OrbType;
 
     private void OnMouseUp() {
@@ -41,18 +42,26 @@ public class Orb : MonoBehaviour {
 
         List<Orb> orbs = this.FindAdjacentSpecifiedType(Manager.NextOrbName);
         if (orbs.Count < Manager.ChainLength) {
-            Orb newOrb = Manager.GenerateOrb(transform.localPosition + Vector3.up);
+            Vector3 newPosition = transform.localPosition + Vector3.up;
+            if (newPosition.y >= Manager.MaxHeightForLose) {
+                Manager.ShowLoseScreen();
+                return;
+            }
+
+            Orb newOrb = Manager.GenerateOrb(newPosition);
             Manager.CurrentField.Add(newOrb);
             newOrb.BindConnections();
 
             List<Orb> same = newOrb.FindAdjacentSameType();
             if (same.Count >= Manager.ChainLength) {
                 foreach (Orb orb in same) orb.GracefulDestroy();
+                Manager.PopSoundSpecial.Play();
                 BoostScoreExp(same.Count);
             }
         } else {
             foreach (Orb orb in orbs) orb.GracefulDestroy();
             BoostScoreExp(orbs.Count);
+            Manager.PopSoundSpecial.Play();
         }
 
         BoostScore(1);
@@ -62,7 +71,13 @@ public class Orb : MonoBehaviour {
 
     public void GracefulDestroy() {
         this.UnbindConnections();
+
         Manager.CurrentField.Remove(this);
+        ParticleSystem particleObject = Instantiate(Particle, transform.position, Quaternion.identity);
+        particleObject.transform.SetParent(Manager.transform, true);
+        particleObject.Play();
+        Destroy(particleObject, 1f);
+
         Destroy(gameObject);
     }
 

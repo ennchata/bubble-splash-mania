@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using TMPro;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
@@ -16,13 +17,25 @@ public class OrbManager : MonoBehaviour {
     public float BombChance = 0.1f;
     public float Score = 0f;
     public int ChainLength = 4;
-    public AudioSource PopSound, ExplosionSound;
+    public int MaxHeightForLose = 11;
+    public float Timer = 0f;
+    public AudioSource PopSound, ExplosionSound, PopSoundSpecial;
+    public ParticleSystem Particles;
+    public GameObject WinScreen;
+    public TMP_Text ScoreText;
+    public GameObject LoseScreen;
+    public bool GameStarted = false;
 
     void Start() {
         if (OrbTemplates.Count == 0) throw new Exception("No orb templates have been provided.");
         if (Camera == null) throw new Exception("Camera was not provided.");
 
         NextOrbIndex = Random.Range(0, OrbTemplates.Count);
+    }
+
+    private void Update() {
+        Timer = Mathf.Max(0f, Timer - Time.deltaTime);
+        if (Timer == 0 && GameStarted) ShowWinScreen();
     }
 
     public List<Orb> GenerateField(int width, int height) {
@@ -73,6 +86,7 @@ public class OrbManager : MonoBehaviour {
 
         clone.transform.SetLocalPositionAndRotation(position, Quaternion.identity);
         component.OrbType = GetMaterialName(clone.GetComponent<Renderer>().material.name);
+        component.Particle = Particles;
         component.Manager = this;
 
         return component;
@@ -92,5 +106,20 @@ public class OrbManager : MonoBehaviour {
         }
 
         NextOrbIndex = Random.Range(0, OrbTemplates.Count);
+    }
+
+    public void ShowWinScreen() {
+        WinScreen.SetActive(true);
+        ScoreText.text = $"Your Score: {Mathf.Floor(Score * 100) / 100}";
+
+        foreach (Orb orb in CurrentField) Destroy(orb.gameObject);
+        CurrentField.Clear();
+    }
+
+    public void ShowLoseScreen() {
+        LoseScreen.SetActive(true);
+
+        foreach (Orb orb in CurrentField) Destroy(orb.gameObject);
+        CurrentField.Clear();
     }
 }
